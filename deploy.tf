@@ -34,6 +34,16 @@ resource "docker_container" "wbld" {
   image   = docker_image.wbld.latest
   command = ["python3", "-m", "wbld.bot"]
   env     = ["DISCORD_TOKEN=${var.discord_token}"]
+
+  volumes {
+    volume_name    = "wbld_platformio"
+    container_path = "/root/.platformio"
+  }
+
+  volumes {
+    volume_name    = "wbld_buildcache"
+    container_path = "/root/.buildcache"
+  }
 }
 
 data "docker_registry_image" "wbld" {
