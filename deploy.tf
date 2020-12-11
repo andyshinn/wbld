@@ -25,7 +25,7 @@ provider "docker" {
   registry_auth {
     address  = "ghcr.io"
     username = "andyshinn"
-    password = var.registry_password
+    password = var.github_token
   }
 }
 
