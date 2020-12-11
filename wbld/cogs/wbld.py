@@ -24,7 +24,7 @@ class WbldCog(commands.Cog, name="Builder"):
 
             with builder(clone.path, env_or_snippet) as build:
                 await ctx.send(f"Attempting to build environment `{build.env}`. This may take a couple minutes...")
-                run = await self.bot.loop.run_in_executor(None, build.run)
+                await self.bot.loop.run_in_executor(None, build.run)
                 build_file = open(build.firmware_filename, "rb")
                 logger.debug(f"Firmware file: {build_file}")
                 if build_file:
