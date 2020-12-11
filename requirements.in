@@ -1,0 +1,11 @@
+black
+discord.py
+GitPython
+loguru
+platformio
+PyGithub
+pylint
+pytest
+python-dotenv
+sentry-sdk
+watchdog[watchmedo]
