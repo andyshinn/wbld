@@ -106,9 +106,6 @@ class Builder:
         with redirect_stdout(output), redirect_stderr(output):
             run = factory.run(run_options, [], True, False, 1)
 
-        output.seek(0)
-        run["last_lines"] = output.readlines()[-2:]
-
         logger.debug(output.getvalue())
         logger.debug(f"Returning run: {run}")
         return run

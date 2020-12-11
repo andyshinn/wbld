@@ -29,7 +29,7 @@ class WbldCog(commands.Cog, name="Builder"):
                 logger.debug(f"Firmware file: {build_file}")
                 if build_file:
                     file = File(build_file, filename=f"wled_{build.env}_{version}.bin")
-                    await ctx.send(file=file, content=f"Looks like everything built correctly!\n\n{run['last_lines']}")
+                    await ctx.send(file=file, content=f"Looks like everything built correctly for {build.env}")
                 else:
                     await ctx.send("There was a problem building the firmware.")
                     logger.error(f"Error building firmware for `{build.env}` against `{version}`.")
