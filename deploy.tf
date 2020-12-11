@@ -43,4 +43,5 @@ data "docker_registry_image" "wbld" {
 resource "docker_image" "wbld" {
   name          = data.docker_registry_image.wbld.name
   pull_triggers = [data.docker_registry_image.wbld.sha256_digest]
+  keep_locally  = true
 }
