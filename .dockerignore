@@ -5,3 +5,6 @@ __pycache__/
 .pio/
 .pytest_cache/
 .env
+.terraform/
+.terraform.*
+terraform.*

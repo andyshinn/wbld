@@ -4,12 +4,18 @@ on: [push]
 
 jobs:
   testing:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
           python-version: 3.8
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
       - run: pip install -r requirements.txt
       - run: pytest
       - run: black --line-length 120 --check --diff -l 120 **/*.py
