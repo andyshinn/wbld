@@ -6,7 +6,7 @@ from wbld.log import logger
 from wbld.cogs.wbld import WbldCog
 
 TOKEN = os.getenv("DISCORD_TOKEN")
-PREFIXES = ["./"]
+PREFIXES = [os.getenv("DISCORD_PREFIX", "./")]
 
 
 class Bot(commands.Bot):
