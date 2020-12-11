@@ -29,7 +29,7 @@ class WbldCog(commands.Cog, name="Builder"):
                 logger.debug(f"Firmware file: {build_file}")
                 if build_file:
                     file = File(build_file, filename=f"wled_{build.env}_{version}.bin")
-                    await ctx.send(file=file, content=f"Looks like everything built correctly!\n\n{run['stdout']}")
+                    await ctx.send(file=file, content=f"Looks like everything built correctly!\n\n{run['last_lines']}")
                 else:
                     await ctx.send("There was a problem building the firmware.")
                     logger.error(f"Error building firmware for `{build.env}` against `{version}`.")
@@ -125,7 +125,7 @@ class WbldCog(commands.Cog, name="Builder"):
             raise error
         else:
             await ctx.send(
-                f"Ready to build `{version}` (`{commit.hexsha}`). Please paste your custom PlatformIO environment config."
+                f"Ready to build `{version}` (`{commit.hexsha}`). Paste your custom PlatformIO environment config."
             )
             try:
                 msg = await self.bot.wait_for("message", check=check_author(ctx.author, ctx.channel), timeout=30)

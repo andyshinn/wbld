@@ -1,9 +1,8 @@
 from configparser import ConfigParser
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 import os
 import uuid
 import io
-import sys
 
 from platformio.package.manager.platform import PlatformPackageManager
 from platformio.platform.exception import UnknownPlatform
@@ -103,17 +102,14 @@ class Builder:
             factory = PlatformFactory.new(platform)
 
         run_options = {"pioenv": self.env, "project_config": self.project_config.path}
-        stdout = io.StringIO()
-        with redirect_stdout(stdout):
+        output = io.StringIO()
+        with redirect_stdout(output), redirect_stderr(output):
             run = factory.run(run_options, [], True, False, 1)
-            stdout.flush()
-            sys.stdout.flush()
 
-        stdout.flush()
-        sys.stdout.flush()
-        run["stdout"] = stdout.getvalue()
-        logger.debug(stdout)
-        logger.debug(stdout.getvalue())
+        output.seek(0)
+        run["last_lines"] = output.readlines()[-2:]
+
+        logger.debug(output.getvalue())
         logger.debug(f"Returning run: {run}")
         return run
 
