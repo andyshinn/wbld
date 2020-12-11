@@ -4,6 +4,11 @@ terraform {
       source  = "kreuzwerker/docker"
       version = "2.8.0"
     }
+
+    nomad = {
+      source  = "hashicorp/nomad"
+      version = "1.4.11"
+    }
   }
 }
 
@@ -13,14 +18,20 @@ variable "image" {
 
 variable "github_token" {
   description = "GitHub token for GHCR auth"
+  sensitive   = true
 }
 
 variable "discord_token" {
   description = "Discord auth token"
+  sensitive   = true
+}
+
+provider "nomad" {
+  address = "http://127.0.0.1:4646"
 }
 
 provider "docker" {
-  host = "tcp://localhost:2375"
+  host = "tcp://127.0.0.1:2375"
 
   registry_auth {
     address  = "ghcr.io"
@@ -29,29 +40,17 @@ provider "docker" {
   }
 }
 
-resource "docker_container" "wbld" {
-  name    = "wbld"
-  image   = docker_image.wbld.latest
-  command = ["python3", "-m", "wbld.bot"]
-  env     = ["DISCORD_TOKEN=${var.discord_token}"]
-
-  volumes {
-    volume_name    = "wbld_platformio"
-    container_path = "/root/.platformio"
-  }
-
-  volumes {
-    volume_name    = "wbld_buildcache"
-    container_path = "/root/.buildcache"
-  }
+resource "docker_volume" "wbld_buildcache" {
+  name = "wbld_buildcache"
 }
 
-data "docker_registry_image" "wbld" {
-  name = var.image
+resource "docker_volume" "wbld_platformio" {
+  name = "wbld_platformio"
 }
 
-resource "docker_image" "wbld" {
-  name          = data.docker_registry_image.wbld.name
-  pull_triggers = [data.docker_registry_image.wbld.sha256_digest]
-  keep_locally  = true
+resource "nomad_job" "wbld" {
+  jobspec = templatefile(
+    "job.hcl.tpl",
+    { github_token = var.github_token, discord_token = var.discord_token, image = var.image }
+  )
 }
