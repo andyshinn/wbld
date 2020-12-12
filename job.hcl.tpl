@@ -34,6 +34,11 @@ job "wbld" {
       ]
     }
 
+    resources {
+      cpu    = 1000
+      memory = 1024
+    }
+
     env {
       DISCORD_TOKEN = "${discord_token}"
       PING_URL      = "${ping_url}"
