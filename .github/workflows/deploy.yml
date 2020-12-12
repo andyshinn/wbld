@@ -48,10 +48,6 @@ jobs:
         with:
           terraform_version: 0.14.2
           terraform_wrapper: false
-      - uses: actions/cache@v2
-        with:
-          key: ${{ runner.os }}-terraform-state-cache
-          path: ${{ github.workspace }}/terraform.*
       - name: Terraform Init
         run: terraform init
       - name: Terraform Apply
