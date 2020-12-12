@@ -4,8 +4,10 @@ from discord.ext import commands
 
 from wbld.log import logger
 from wbld.cogs.wbld import WbldCog
+from wbld.cogs.health import Health
 
 TOKEN = os.getenv("DISCORD_TOKEN")
+PING_URL = os.getenv("PING_URL")
 PREFIXES = [os.getenv("DISCORD_PREFIX", "./")]
 
 
@@ -27,6 +29,8 @@ bot = Bot(
 
 if __name__ == "__main__":
     if TOKEN:
+        if PING_URL:
+            bot.add_cog(Health(bot, PING_URL))
         bot.add_cog(WbldCog(bot))
         bot.run(TOKEN)
     else:

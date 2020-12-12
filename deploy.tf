@@ -26,6 +26,11 @@ variable "discord_token" {
   sensitive   = true
 }
 
+variable "ping_url" {
+  description = "Health check ping URL"
+  sensitive   = true
+}
+
 provider "nomad" {
   address = "http://127.0.0.1:4646"
 }
@@ -51,6 +56,10 @@ resource "docker_volume" "wbld_platformio" {
 resource "nomad_job" "wbld" {
   jobspec = templatefile(
     "job.hcl.tpl",
-    { github_token = var.github_token, discord_token = var.discord_token, image = var.image }
+    { github_token  = var.github_token,
+      discord_token = var.discord_token,
+      image         = var.image,
+      ping_url      = var.ping_url
+    }
   )
 }

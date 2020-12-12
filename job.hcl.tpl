@@ -36,6 +36,7 @@ job "wbld" {
 
     env {
       DISCORD_TOKEN = "${discord_token}"
+      PING_URL      = "${ping_url}"
     }
   }
 }
