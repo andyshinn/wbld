@@ -54,6 +54,7 @@ resource "docker_volume" "wbld_platformio" {
 }
 
 resource "nomad_job" "wbld" {
+  depends_on = [docker_volume.wbld_buildcache, docker_volume.wbld_platformio]
   jobspec = templatefile(
     "job.hcl.tpl",
     { github_token  = var.github_token,
