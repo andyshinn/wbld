@@ -4,7 +4,7 @@
 #
 #    pip-compile
 #
-aiohttp==3.6.3            # via discord.py
+aiohttp==3.6.3            # via -r requirements.in, discord.py
 appdirs==1.4.4            # via black
 argh==0.26.2              # via watchdog
 astroid==2.4.2            # via pylint
