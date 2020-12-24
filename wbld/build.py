@@ -1,8 +1,10 @@
 from configparser import ConfigParser
 from contextlib import redirect_stderr, redirect_stdout
 import os
+import shutil
 import uuid
-import io
+from pathlib import Path
+from tempfile import mkdtemp, gettempdir
 
 from platformio.package.manager.platform import PlatformPackageManager
 from platformio.platform.exception import UnknownPlatform
@@ -11,6 +13,8 @@ from platformio.project.config import ProjectConfig
 from platformio.project.helpers import is_platformio_project
 
 from wbld.log import logger
+
+STORAGE = os.getenv("STORAGE_DIR", f"{gettempdir()}/wbld")
 
 
 class CustomConfigException(Exception):
@@ -38,13 +42,19 @@ class CustomConfig(ConfigParser):
     def __str__(self):
         return self.snippet
 
+    @staticmethod
+    def remove_prefix(text, prefix):
+        if text.startswith(prefix):
+            return text[len(prefix) :]
+        return text
+
     @property
     def section(self):
         return self.sections()[0]
 
     @property
     def env(self):
-        return self.section.lstrip("env:")
+        return CustomConfig.remove_prefix(self.section, "env:")
 
     @property
     def config(self):
@@ -56,9 +66,62 @@ class CustomConfig(ConfigParser):
 
 
 class CustomProjectConfig(ProjectConfig):
-    def __init__(self, config):
-        super(CustomProjectConfig, self).__init__()
-        self.update([(config.name, list(config.items()))])
+    def __init__(self, path=None):
+        super(CustomProjectConfig, self).__init__(path)
+
+    def append_custom_config(self, custom_config):
+        self.update([(custom_config.name, list(custom_config.items()))])
+
+    def get_env_platform(self, env):
+        env_items = self.items(env=env, as_dict=True)
+
+        logger.debug(env_items)
+
+        if "platform" in env_items:
+            return env_items["platform"]
+
+        return None
+
+
+class BasePath:
+    def __init__(self):
+        self.base_path = Path(STORAGE)
+
+
+class Build(BasePath):
+    def __init__(self, uuid):  # pylint: disable=redefined-outer-name
+        super(Build, self).__init__()
+        self.path = self.base_path.joinpath(str(uuid))
+        self.uuid = uuid
+
+        if not self.path.is_dir():
+            raise FileNotFoundError
+
+    def __repr__(self):
+        return "{}({!r})".format(self.__class__.__name__, self.uuid)
+
+    def __str__(self):
+        return str(self.uuid)
+
+    def _get_file(self, file, mode="r"):
+        file = self.path.joinpath(file)
+
+        if file.exists():
+            return open(file, mode)
+        return None
+
+    @property
+    def log(self):
+        return self._get_file("combined")
+
+    @property
+    def firmware(self):
+        return self._get_file("firmware.bin", "rb")
+
+
+class Manager(BasePath):
+    def list_builds(self):
+        return [Build(path.name) for path in self.base_path.iterdir()]
 
 
 class Builder:
@@ -69,6 +132,7 @@ class Builder:
         self.package_manager = PlatformPackageManager()
         self._old_dir = None
         self.project_config = None
+        self.uuid = uuid.uuid4()
 
         if not is_platformio_project(self.path.name):
             logger.debug(f"Raising FileNotFoundError for path: {self.path}")
@@ -90,8 +154,16 @@ class Builder:
     def firmware_filename(self):
         return f"{self.path.name}/.pio/build/{self.env}/firmware.bin"
 
-    def run(self):
+    # pylint: disable=too-many-arguments
+    def run(self, variables=None, targets=None, silent=False, verbose=False, jobs=2):
+        if not variables:
+            variables = {"pioenv": self.env, "project_config": self.project_config.path}
+
+        if not targets:
+            targets = []
+
         options = self.project_config.items(env=self.env, as_dict=True)
+        logger.debug(f"Building env: {self.env}")
         logger.debug(options)
         platform = options["platform"]
 
@@ -101,14 +173,21 @@ class Builder:
             self.platform_install(platform=platform, skip_default_package=True)
             factory = PlatformFactory.new(platform)
 
-        run_options = {"pioenv": self.env, "project_config": self.project_config.path}
-        output = io.StringIO()
-        with redirect_stdout(output), redirect_stderr(output):
-            run = factory.run(run_options, [], True, False, 1)
+        log_dir = mkdtemp()
+        log_combined = open(file=f"{log_dir}/combined", mode="w")
 
-        logger.debug(output.getvalue())
-        logger.debug(f"Returning run: {run}")
-        return run
+        with redirect_stdout(log_combined), redirect_stderr(log_combined):
+            run = factory.run(variables, targets, silent, verbose, jobs)
+
+        logger.debug(run)
+
+        logger.debug(f"Logged stdout and stderr to: {log_combined.name}")
+
+        if run:
+            self.gather_files([log_combined, open(self.firmware_filename, "rb")])
+            return Build(self.uuid)
+
+        return False
 
     def build_file(self):
         run = self.run()
@@ -132,6 +211,14 @@ class Builder:
     def cleanup(self):
         os.chdir(self._old_dir)
         self.path.cleanup()
+
+    def gather_files(self, files):
+        path = Path(f"{STORAGE}/{str(self.uuid)}")
+        path.mkdir(parents=True, exist_ok=True)
+        for file in files:
+            shutil.copy(file.name, path)
+            file.close()
+        logger.debug(f"File temporary path: {path}")
 
 
 class BuilderCustom(Builder):

@@ -3,7 +3,7 @@ from configparser import MissingSectionHeaderError, ParsingError
 from discord import File, Embed
 from discord.ext import commands
 
-from wbld.build import Builder, BuilderCustom, CustomConfigException
+from wbld.build import Builder, BuilderCustom, CustomConfigException, Build
 from wbld.log import logger
 from wbld.repository import Reference, ReferenceException, Clone
 
@@ -23,15 +23,19 @@ class WbldCog(commands.Cog, name="Builder"):
                 clone.clone_version()
 
             with builder(clone.path, env_or_snippet) as build:
-                await ctx.send(f"Attempting to build environment `{build.env}`. This may take a couple minutes...")
-                await self.bot.loop.run_in_executor(None, build.run)
-                build_file = open(build.firmware_filename, "rb")
+                await ctx.send(
+                    f"Building environment `{build.env}` as UUID `{build.uuid}`. This will take a couple minutes..."
+                )
+                finished_build = await self.bot.loop.run_in_executor(None, build.run)
+                build_file = finished_build.firmware
                 logger.debug(f"Firmware file: {build_file}")
                 if build_file:
-                    file = File(build_file, filename=f"wled_{build.env}_{version}.bin")
-                    await ctx.send(file=file, content=f"Looks like everything built correctly for {build.env}")
+                    file = File(build_file, filename=f"wled_{build.env}_{version}_{build.uuid}.bin")
+                    await ctx.send(file=file, content=f"Build `{build.uuid}` completed for `{build.env}`.")
                 else:
-                    await ctx.send("There was a problem building the firmware.")
+                    await ctx.send(
+                        f"There was a problem building the firmware. See logs with `{ctx.prefix}build log <uuid>`"
+                    )
                     logger.error(f"Error building firmware for `{build.env}` against `{version}`.")
         except ReferenceException as error:
             await ctx.send(f"{error}: {version}")
@@ -96,28 +100,59 @@ class WbldCog(commands.Cog, name="Builder"):
 
     @commands.group(description="Firmware building commands.")
     async def build(self, ctx):
+        """
+        See help for builtin firmware:
+
+          ./help build builtin
+
+        See help for custom firmware:
+
+          ./help build custom
+
+        """
         if ctx.invoked_subcommand is None:
             subcommands = ", ".join([f"`{c.name}`" for c in ctx.command.commands])
-            await ctx.send(f"Invalid `{ctx.command.name}` command passed. Availabe subcommands: {subcommands}")
+            await ctx.send(f"Invalid `{ctx.command.name}` command passed. Available subcommands: {subcommands}")
 
     @commands.max_concurrency(1, per=commands.BucketType.user)
     @build.command()
     async def builtin(self, ctx, env, version="master"):
+        """
+        Builds and returns a firmware file for an environment which already exists in the WLED PlatformIO configuration.
+
+        Example:
+
+          ./build builtin d1_mini
+        """
         await self._build_firmware(ctx, version, env, Builder)
 
     @commands.max_concurrency(1, per=commands.BucketType.user)
     @build.command()
     async def custom(self, ctx, version="master"):
+        """
+        Builds and returns firmware for a custom configuration snippet that you provide.
+
+        Example custom build for version 0.11.2:
+
+          ./build custom v0.11.1
+
+        The bot will then ask for a configuration snippet. Example for custom APA102 ESP32 build:
+
+          [env:apaesp32]
+          board = esp32dev
+          platform = espressif32@2.1.0
+          build_unflags = ${common.build_unflags}
+          build_flags = ${common.build_flags_esp32} -D USE_APA102 -D CLKPIN=2 -D DATAPIN=3
+          lib_ignore =
+            ESPAsyncTCP
+            ESPAsyncUDP
+        """
+
         def check_author(author, channel):
             def inner_check(message):
                 return message.author == author and message.channel == channel
-
             return inner_check
 
-        # reference = await WbldCog._get_reference(ctx, version)
-
-        # if reference:
-        #     await WbldCog._send_ready(ctx, reference)
         try:
             clone = Clone(version)
             commit = clone.clone_version()
@@ -133,3 +168,20 @@ class WbldCog(commands.Cog, name="Builder"):
                 await ctx.send("Didn't receive configuraton within 30 seconds. Try again!")
             else:
                 await self._build_firmware(ctx, version, msg.content, BuilderCustom, clone=clone)
+
+    @build.command()
+    async def log(self, ctx, uuid):
+        """
+        Returns the log file containing stdout and stderr of the PlatformIO build.
+        """
+
+        try:
+            build = Build(uuid)
+        except FileNotFoundError:
+            await ctx.send(
+                # pylint: disable=line-too-long
+                f"Couldn't find UUID: `{uuid}`. It either doesn't exist, has already been cleaned up, or had an error before we could write logs."
+            )
+        else:
+            file_send = File(build.log, filename=f"wled_build_{uuid}.log")
+            await ctx.send(file=file_send, content=f"Log file for build UUID: `{uuid}`")
