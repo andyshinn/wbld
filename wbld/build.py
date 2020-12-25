@@ -123,6 +123,9 @@ class Manager(BasePath):
     def list_builds(self):
         return [Build(path.name) for path in self.base_path.iterdir()]
 
+    def get_build(self, uuid):  # pylint: disable=redefined-outer-name
+        return Build(uuid)
+
 
 class Builder:
     def __init__(self, path, env):

@@ -9,3 +9,4 @@ __pycache__/
 .terraform.*
 terraform.*
 *.tfvars
+.DS_Store

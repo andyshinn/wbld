@@ -151,6 +151,7 @@ class WbldCog(commands.Cog, name="Builder"):
         def check_author(author, channel):
             def inner_check(message):
                 return message.author == author and message.channel == channel
+
             return inner_check
 
         try:
