@@ -177,7 +177,7 @@ class Builder:
             factory = PlatformFactory.new(platform)
 
         log_dir = mkdtemp()
-        log_combined = open(file=f"{log_dir}/combined", mode="w")
+        log_combined = open(file=f"{log_dir}/combined.txt", mode="w")
 
         with redirect_stdout(log_combined), redirect_stderr(log_combined):
             run = factory.run(variables, targets, silent, verbose, jobs)
