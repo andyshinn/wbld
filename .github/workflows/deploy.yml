@@ -41,6 +41,7 @@ jobs:
       TF_VAR_github_token: ${{ secrets.GHCR_TOKEN }}
       TF_VAR_discord_token: ${{ secrets.DISCORD_TOKEN }}
       TF_VAR_ping_url: ${{ secrets.PING_URL }}
+      TF_VAR_commit: ${{ github.sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2

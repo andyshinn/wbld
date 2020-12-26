@@ -6,6 +6,7 @@ import uuid
 from pathlib import Path
 from tempfile import mkdtemp, gettempdir
 
+import pendulum
 from platformio.package.manager.platform import PlatformPackageManager
 from platformio.platform.exception import UnknownPlatform
 from platformio.platform.factory import PlatformFactory
@@ -117,6 +118,18 @@ class Build(BasePath):
     @property
     def firmware(self):
         return self._get_file("firmware.bin", "rb")
+
+    @property
+    def datetime_creation(self):
+        return pendulum.from_timestamp(self.path.stat().st_ctime)
+
+    @property
+    def datetime_w3c(self):
+        return self.datetime_creation.to_w3c_string()
+
+    @property
+    def datetime_human_diff(self):
+        return self.datetime_creation.diff_for_humans()
 
 
 class Manager(BasePath):

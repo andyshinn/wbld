@@ -6,6 +6,10 @@ job "wbld" {
   }
 
   group "server" {
+    meta {
+      commit = "${commit}"
+    }
+
     network {
       port "http" {
         static = 8092

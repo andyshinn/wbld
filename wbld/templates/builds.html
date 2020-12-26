@@ -20,6 +20,7 @@
       </span>
       <p class="ml-2">
         <a href="/build/{{ build.uuid }}">{{ build.uuid }}</a>
+        <time class="text-gray-300 text-sm italic ml-1" datetime="{{ build.datetime_w3c }}">{{ build.datetime_human_diff }}</time>
       </p>
     </li>
     {% endfor %}

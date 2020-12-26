@@ -4,6 +4,7 @@ black
 discord.py
 GitPython
 loguru
+pendulum
 platformio
 PyGithub
 pylint
