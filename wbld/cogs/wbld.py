@@ -1,11 +1,40 @@
+from asyncio.exceptions import TimeoutError
 from configparser import MissingSectionHeaderError, ParsingError
 
-from discord import File, Embed
+from discord import File, Embed, Colour
 from discord.ext import commands
 
-from wbld.build import Builder, BuilderCustom, CustomConfigException, Build
+from wbld.build import Builder, BuilderCustom
+from wbld.build.config import CustomConfigException
+from wbld.build.models import BuildModel
+from wbld.build.enums import State
 from wbld.log import logger
 from wbld.repository import Reference, ReferenceException, Clone
+
+
+class WbldEmbed(Embed):
+    def __init__(self, ctx: commands.Context, build: BuildModel, base_url: str, **kwargs):
+        super().__init__(**kwargs)
+        self.colour = Colour.blue()
+        self.title = f"Build Started: {build.build_id}"
+        self.url = f"{base_url}/build/{build.build_id}"
+        self.set_author(name=ctx.author.name, icon_url=ctx.author.avatar_url)
+        self.add_field(name="env", value=build.env)
+
+        if build.state == State.SUCCESS:
+            self.colour = Colour.green()
+            self.title = f"Build Completed: {build.build_id}"
+            self.add_field(name="firmware", value=f"[firmware.bin]({base_url}/data/{build.build_id}/firmware.bin)")
+            self.add_field(name="log", value=f"[combined.txt]({base_url}/data/{build.build_id}/combined.txt)")
+        elif build.state == State.FAILED:
+            self.colour = Colour.red()
+            self.title = f"Build Failed: {build.build_id}"
+            self.add_field(name="log", value=f"[combined.txt]({base_url}/data/{build.build_id}/combined.txt)")
+        else:
+            self.add_field(name="version", value=build.version)
+            self.add_field(
+                name="commit", value=f"[{build.sha1}](https://github.com/Aircoookie/WLED/commit/{build.sha1})"
+            )
 
 
 class WbldCog(commands.Cog, name="Builder"):
@@ -13,30 +42,38 @@ class WbldCog(commands.Cog, name="Builder"):
     Commands to build and work with WLED firmware.
     """
 
-    def __init__(self, bot):
+    def __init__(self, bot, base_url: str):
         self.bot = bot
+        self.base_url = base_url
 
-    async def _build_firmware(self, ctx, version, env_or_snippet, builder, clone=None):
+    async def _build_firmware(self, ctx: commands.Context, version, env_or_snippet, builder, clone=None):
         try:
             if not clone:
                 clone = Clone(version)
                 clone.clone_version()
 
-            with builder(clone.path, env_or_snippet) as build:
+            with builder(clone, env_or_snippet) as build:
                 await ctx.send(
-                    f"Building environment `{build.env}` as UUID `{build.uuid}`. This will take a couple minutes..."
+                    f"Sure thing. Building env `{build.build.env}` as `{build.build.build_id}`. This will take a minute or two.",
+                    embed=WbldEmbed(ctx, build.build, self.base_url),
                 )
-                finished_build = await self.bot.loop.run_in_executor(None, build.run)
-                build_file = finished_build.firmware
-                logger.debug(f"Firmware file: {build_file}")
-                if build_file:
-                    file = File(build_file, filename=f"wled_{build.env}_{version}_{build.uuid}.bin")
-                    await ctx.send(file=file, content=f"Build `{build.uuid}` completed for `{build.env}`.")
+                build.build.author = ctx.author
+                run = await self.bot.loop.run_in_executor(None, build.run)
+
+                if run and build.build.state == State.SUCCESS:
+                    with build.build.file_binary.open("rb") as binary:
+                        dfile = File(binary, filename=f"wled_{build.build.env}_{version}_{build.build.build_id}.bin")
+                        await ctx.send(
+                            embed=WbldEmbed(ctx, build.build, self.base_url),
+                            file=dfile,
+                            content=f"Good news, {ctx.author.mention}! Your build `{build.build.build_id}` for `{build.build.env}` has succeeded.",
+                        )
                 else:
                     await ctx.send(
-                        f"There was a problem building the firmware. See logs with `{ctx.prefix}build log <uuid>`"
+                        embed=WbldEmbed(ctx, build.build, self.base_url),
+                        content=f"Sorry, {ctx.author.mention}. There was a problem building. See logs with: `{ctx.prefix}build log {build.build.build_id}`",
                     )
-                    logger.error(f"Error building firmware for `{build.env}` against `{version}`.")
+                    logger.error(f"Error building firmware for `{build.build.env}` against `{version}`.")
         except ReferenceException as error:
             await ctx.send(f"{error}: {version}")
         except (
@@ -80,17 +117,20 @@ class WbldCog(commands.Cog, name="Builder"):
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, exception):
-        if isinstance(
+        if isinstance(exception, TimeoutError):
+            logger.debug(exception)
+            await ctx.send(exception)
+        elif isinstance(
             exception,
             (
                 commands.errors.CommandNotFound,
                 commands.errors.MissingRequiredArgument,
                 commands.errors.MaxConcurrencyReached,
+                commands.errors.CommandInvokeError,
             ),
         ):
-            await ctx.send(f"{exception}")
-        if isinstance(exception, commands.errors.CommandInvokeError):
-            await ctx.send(f"Something went wrong: {exception}")
+            await ctx.send(exception)
+        await logger.complete()
         raise exception
 
     @commands.Cog.listener()
@@ -171,18 +211,18 @@ class WbldCog(commands.Cog, name="Builder"):
                 await self._build_firmware(ctx, version, msg.content, BuilderCustom, clone=clone)
 
     @build.command()
-    async def log(self, ctx, uuid):
+    async def log(self, ctx, build_id):
         """
         Returns the log file containing stdout and stderr of the PlatformIO build.
         """
 
         try:
-            build = Build(uuid)
+            build = BuildModel.parse_build_id(build_id)
         except FileNotFoundError:
             await ctx.send(
-                # pylint: disable=line-too-long
-                f"Couldn't find UUID: `{uuid}`. It either doesn't exist, has already been cleaned up, or had an error before we could write logs."
+                f"Couldn't find build: `{build_id}`. It either doesn't exist, has already been cleaned up, or had an "
+                "error before we could write logs. "
             )
         else:
-            file_send = File(build.log, filename=f"wled_build_{uuid}.log")
-            await ctx.send(file=file_send, content=f"Log file for build UUID: `{uuid}`")
+            file_send = File(build.file_log, filename=f"wled_build_{build_id}.log")
+            await ctx.send(file=file_send, content=f"Log file for build: `{build_id}`")

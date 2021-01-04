@@ -3,12 +3,14 @@ aiohttp_jinja2
 black
 discord.py
 GitPython
+humanize
 loguru
-pendulum
 platformio
+pydantic
 PyGithub
 pylint
 pytest
 python-dotenv
 sentry-sdk
+shortuuid
 watchdog[watchmedo]

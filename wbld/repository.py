@@ -1,5 +1,6 @@
 from tempfile import TemporaryDirectory
 import os
+from pathlib import Path
 
 from github import Github, GithubException
 from git import Repo
@@ -52,21 +53,26 @@ class Reference:
 
 class Clone:
     def __init__(self, version, url="https://github.com/Aircoookie/WLED.git"):
-        self.path = TemporaryDirectory()
+        self.tempdir = TemporaryDirectory()
+        self.path = Path(self.tempdir.name)
         self.url = url
         self.version = version
-        self.repo = Repo.init(self.path.name)
+        self.repo = Repo.init(str(self.path))
+        self.sha1 = None
 
     def __enter__(self):
         return self.path
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.path.cleanup()
+        self.cleanup()
 
     def clone_version(self):
         origin = self.repo.create_remote("origin", self.url)
         origin.fetch()
-        # repo.create_head('master', origin.refs.master)
         self.repo.git.checkout(self.version)
 
-        return self.repo.commit()
+        self.sha1 = self.repo.commit()
+        return self.sha1
+
+    def cleanup(self):
+        self.tempdir.cleanup()

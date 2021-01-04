@@ -10,3 +10,6 @@ __pycache__/
 terraform.*
 *.tfvars
 .DS_Store
+venv/
+.venv/
+.idea/

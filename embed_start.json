@@ -1,0 +1,37 @@
+{
+  "username": "WBLD",
+  "avatar_url": "https://wbld.app/static/images/wled_nodemcu.png",
+  "embeds": [
+    {
+      "title": "Build",
+      "color": 23039,
+      "description": "User started a new build. This will take a couple minutes...",
+      "url": "https://wbld.app/build/9b19a09b-6c8b-4af0-a5a6-4cc4d7469a97",
+      "author": {
+        "name": "andyshinn",
+        "icon_url": "https://cdn.discordapp.com/avatars/206914075391688704/c99db651f6ca26a8710e565301846a6e.png"
+      },
+      "image": {},
+      "thumbnail": {},
+      "footer": {},
+      "fields": [
+        {
+          "name": "uuid",
+          "value": "9b19a09b-6c8b-4af0-a5a6-4cc4d7469a97"
+        },
+        {
+          "name": "env",
+          "value": "d1_mini"
+        },
+        {
+          "name": "version",
+          "value": "master"
+        },
+        {
+          "name": "commit",
+          "value": "[c5818ff5e4046de0636c7bf038ecbfbb6569aa4b](https://github.com/Aircoookie/WLED/commit/c5818ff5e4046de0636c7bf038ecbfbb6569aa4b)"
+        }
+      ]
+    }
+  ]
+}
