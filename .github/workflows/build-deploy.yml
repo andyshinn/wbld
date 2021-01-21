@@ -1,8 +1,18 @@
-name: Deploy
+name: "Build & Deploy"
 
-on: [workflow_dispatch]
+on: [push]
 
 jobs:
+  testing:
+    runs-on: [self-hosted, Linux]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - run: pip install -r requirements.txt
+      - run: pytest
+      - run: black --line-length 120 --check --diff -l 120 **/*.py
   image:
     runs-on: [self-hosted, Linux]
     steps:
@@ -33,7 +43,8 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:latest
   deploy:
-    needs: image
+    if: github.ref == 'refs/heads/master'
+    needs: [image, testing]
     runs-on: [self-hosted, Linux]
     env:
       TF_IN_AUTOMATION: 1
@@ -53,3 +64,6 @@ jobs:
         run: terraform init
       - name: Terraform Apply
         run: terraform apply -auto-approve
+    environment:
+      name: production
+      url: https://wbld.app
