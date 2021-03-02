@@ -30,6 +30,11 @@ variable "discord_token" {
   sensitive   = true
 }
 
+variable "sentry_dsn" {
+  description = "Sentry DSN URL"
+  sensitive   = true
+}
+
 variable "ping_url" {
   description = "Health check ping URL"
   sensitive   = true
@@ -63,6 +68,7 @@ resource "nomad_job" "wbld" {
     "job.hcl.tpl",
     { github_token  = var.github_token,
       discord_token = var.discord_token,
+      sentry_dsn    = var.sentry_dsn,
       image         = var.image,
       ping_url      = var.ping_url,
       commit        = var.commit

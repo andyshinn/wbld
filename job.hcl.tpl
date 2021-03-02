@@ -58,6 +58,7 @@ job "wbld" {
 
       env {
         DISCORD_TOKEN = "${discord_token}"
+        SENTRY_DSN = "${sentry_dsn}"
         PING_URL      = "${ping_url}"
         STORAGE_DIR   = "/root/wbld"
       }
@@ -95,6 +96,7 @@ job "wbld" {
       }
 
       env {
+        SENTRY_DSN = "${sentry_dsn}"
         STORAGE_DIR = "/root/wbld"
       }
     }
