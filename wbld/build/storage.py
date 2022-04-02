@@ -15,5 +15,5 @@ class Storage:
     @classmethod
     def generate_build_uuid_path(cls) -> Path:
         path = cls.base_path.joinpath(Path(str(shortuuid.uuid())))
-        path.mkdir()
+        path.mkdir(parents=True)
         return path
