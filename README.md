@@ -6,7 +6,7 @@ You can use the bot in the #bot channel of the WLED Disord server: https://disco
 
 ## Commands
 
-There are two primary commands. If `version` is not specified it defaults to the current `master` branch:
+There are two primary commands. If `version` is not specified it defaults to the current `main` branch:
 
 ### `./build builtin <environment> [version]`
 
@@ -18,7 +18,7 @@ The `builtin` command builds a firmware based on existing environments defined i
 
 ### `./build custom [version]`
 
-The `custom` command builds a PlatformIO configuration snippet. This can help build firmware with specific supported usermods, custom pins, or other settings defined in macros. For example, the following will build a firmware for the QuinLED-Dig-Uno with temperature sensor usermod based the `master` branch:
+The `custom` command builds a PlatformIO configuration snippet. This can help build firmware with specific supported usermods, custom pins, or other settings defined in macros. For example, the following will build a firmware for the QuinLED-Dig-Uno with temperature sensor usermod based the `main` branch:
 
 ```
 ./build custom

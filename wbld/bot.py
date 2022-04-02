@@ -10,6 +10,7 @@ BASE_URL = os.getenv("BASE_URL", "https://wbld.app")
 TOKEN = os.getenv("DISCORD_TOKEN")
 PING_URL = os.getenv("PING_URL")
 PREFIXES = [os.getenv("DISCORD_PREFIX", "./")]
+DEFAULT_BRANCH = os.getenv("DEFAULT_BRANCH", "main")
 
 
 class Bot(commands.Bot):
@@ -32,7 +33,7 @@ if __name__ == "__main__":
     if TOKEN:
         if PING_URL:
             bot.add_cog(Health(bot, PING_URL))
-        bot.add_cog(WbldCog(bot, BASE_URL))
+        bot.add_cog(WbldCog(bot, BASE_URL, DEFAULT_BRANCH))
         bot.run(TOKEN)
     else:
         logger.error("Please set your DISCORD_TOKEN.")

@@ -98,6 +98,7 @@ job "wbld" {
       env {
         SENTRY_DSN = "${sentry_dsn}"
         STORAGE_DIR = "/root/wbld"
+        DEFAULT_BRANCH = "main"
       }
     }
   }

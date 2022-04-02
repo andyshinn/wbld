@@ -32,9 +32,7 @@ class WbldEmbed(Embed):
             self.add_field(name="log", value=f"[combined.txt]({base_url}/data/{build.build_id}/combined.txt)")
         else:
             self.add_field(name="version", value=build.version)
-            self.add_field(
-                name="commit", value=f"[{build.sha1}](https://github.com/Aircoookie/WLED/commit/{build.sha1})"
-            )
+            self.add_field(name="commit", value=f"[{build.sha1}](https://github.com/Aircoookie/WLED/commit/{build.sha1})")
 
 
 class WbldCog(commands.Cog, name="Builder"):
@@ -42,9 +40,10 @@ class WbldCog(commands.Cog, name="Builder"):
     Commands to build and work with WLED firmware.
     """
 
-    def __init__(self, bot, base_url: str):
+    def __init__(self, bot, base_url: str, default_branch: str):
         self.bot = bot
         self.base_url = base_url
+        self.default_branch = default_branch
 
     async def _build_firmware(self, ctx: commands.Context, version, env_or_snippet, builder, clone=None):
         try:
@@ -54,7 +53,7 @@ class WbldCog(commands.Cog, name="Builder"):
 
             with builder(clone, env_or_snippet) as build:
                 await ctx.send(
-                    f"Sure thing. Building env `{build.build.env}` as `{build.build.build_id}`. This will take a minute or two.",
+                    f"Sure thing. Building env `{build.build.env}` as `{build.build.build_id}`. This will take a moment.",
                     embed=WbldEmbed(ctx, build.build, self.base_url),
                 )
                 build.build.author = ctx.author
@@ -66,12 +65,12 @@ class WbldCog(commands.Cog, name="Builder"):
                         await ctx.send(
                             embed=WbldEmbed(ctx, build.build, self.base_url),
                             file=dfile,
-                            content=f"Good news, {ctx.author.mention}! Your build `{build.build.build_id}` for `{build.build.env}` has succeeded.",
+                            content=f"Good news, {ctx.author.mention}! Your build `{build.build.build_id}` for `{build.build.env}` has succeeded.",  # noqa: E501
                         )
                 else:
                     await ctx.send(
                         embed=WbldEmbed(ctx, build.build, self.base_url),
-                        content=f"Sorry, {ctx.author.mention}. There was a problem building. See logs with: `{ctx.prefix}build log {build.build.build_id}`",
+                        content=f"Sorry, {ctx.author.mention}. There was a problem building. See logs with: `{ctx.prefix}build log {build.build.build_id}`",  # noqa: E501
                     )
                     logger.error(f"Error building firmware for `{build.build.env}` against `{version}`.")
         except ReferenceException as error:
@@ -156,7 +155,7 @@ class WbldCog(commands.Cog, name="Builder"):
 
     @commands.max_concurrency(1, per=commands.BucketType.user)
     @build.command()
-    async def builtin(self, ctx, env, version="master"):
+    async def builtin(self, ctx, env, version=None):
         """
         Builds and returns a firmware file for an environment which already exists in the WLED PlatformIO configuration.
 
@@ -164,11 +163,14 @@ class WbldCog(commands.Cog, name="Builder"):
 
           ./build builtin d1_mini
         """
+        if not version:
+            version = self.default_branch
+
         await self._build_firmware(ctx, version, env, Builder)
 
     @commands.max_concurrency(1, per=commands.BucketType.user)
     @build.command()
-    async def custom(self, ctx, version="master"):
+    async def custom(self, ctx, version=None):
         """
         Builds and returns firmware for a custom configuration snippet that you provide.
 
@@ -187,6 +189,9 @@ class WbldCog(commands.Cog, name="Builder"):
             ESPAsyncTCP
             ESPAsyncUDP
         """
+
+        if not version:
+            version = self.default_branch
 
         def check_author(author, channel):
             def inner_check(message):
