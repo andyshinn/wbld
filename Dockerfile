@@ -1,4 +1,4 @@
-FROM python:3.8.15 as build
+FROM python:3.9.15 as build
 RUN python3 -m venv /usr/src/venv
 ENV PATH="/usr/src/venv/bin:$PATH"
 COPY requirements.txt /usr/src/app/
