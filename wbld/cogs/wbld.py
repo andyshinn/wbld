@@ -1,15 +1,18 @@
 from asyncio.exceptions import TimeoutError
 from configparser import MissingSectionHeaderError, ParsingError
+from typing import List, Union
 
-from discord import File, Embed, Colour
+from discord import Colour, Embed, File, Interaction, Message
+from discord.app_commands import Command, context_menu
 from discord.ext import commands
 
-from wbld.build import Builder, BuilderCustom
+from wbld.build import BuilderCustom
 from wbld.build.config import CustomConfigException
-from wbld.build.models import BuildModel
 from wbld.build.enums import State
+from wbld.build.models import BuildModel
+from wbld.build.shbuilder import Builder
 from wbld.log import logger
-from wbld.repository import Reference, ReferenceException, Clone
+from wbld.repository import Reference, ReferenceException
 
 
 class WbldEmbed(Embed):
@@ -18,7 +21,7 @@ class WbldEmbed(Embed):
         self.colour = Colour.blue()
         self.title = f"Build Started: {build.build_id}"
         self.url = f"{base_url}/build/{build.build_id}"
-        self.set_author(name=ctx.author.name, icon_url=ctx.author.avatar_url)
+        self.set_author(name=ctx.author.name, icon_url=ctx.author.avatar.url)
         self.add_field(name="env", value=build.env)
 
         if build.state == State.SUCCESS:
@@ -40,18 +43,24 @@ class WbldCog(commands.Cog, name="Builder"):
     Commands to build and work with WLED firmware.
     """
 
-    def __init__(self, bot, base_url: str, default_branch: str):
-        self.bot = bot
-        self.base_url = base_url
-        self.default_branch = default_branch
+    def __init__(self, bot: commands.Bot, base_url: str, default_branch: str):
+        self.bot: commands.Bot = bot
+        self.base_url: str = base_url
+        self.default_branch: str = default_branch
 
-    async def _build_firmware(self, ctx: commands.Context, version, env_or_snippet, builder, clone=None):
+    async def _build_firmware(
+        self,
+        ctx: commands.Context,
+        version: str,
+        env_or_snippet: str,
+        builder: Union[Builder, BuilderCustom],
+    ):
+        await ctx.defer(ephemeral=False)
+
+        config_exceptions = (CustomConfigException, MissingSectionHeaderError, ParsingError)
+
         try:
-            if not clone:
-                clone = Clone(version)
-                clone.clone_version()
-
-            with builder(clone, env_or_snippet) as build:
+            with builder(version, env_or_snippet) as build:
                 await ctx.send(
                     f"Sure thing. Building env `{build.build.env}` as `{build.build.build_id}`. This will take a moment.",
                     embed=WbldEmbed(ctx, build.build, self.base_url),
@@ -75,11 +84,7 @@ class WbldCog(commands.Cog, name="Builder"):
                     logger.error(f"Error building firmware for `{build.build.env}` against `{version}`.")
         except ReferenceException as error:
             await ctx.send(f"{error}: {version}")
-        except (
-            CustomConfigException,
-            MissingSectionHeaderError,
-            ParsingError,
-        ) as error:
+        except config_exceptions as error:
             await ctx.send(
                 content=f"Config Errror:\n\n{error}\n\nCheck your configuration and see help using: `{ctx.prefix}help`"
             )
@@ -98,21 +103,21 @@ class WbldCog(commands.Cog, name="Builder"):
         logger.debug(ctx)
         logger.debug(reference)
         await logger.complete()
+
         embed = Embed(
             title=reference.commit.sha,
             url=reference.commit.commit.html_url,
             description=reference.commit.commit.message,
             color=0x034EFC,
         )
+
         embed.set_author(
             name=reference.repository.full_name,
             url=reference.repository.html_url,
-            icon_url=reference.repository.owner.avatar_url,
+            icon_url=reference.repository.owner.avatar.url,
         )
-        await ctx.send(
-            content="OK. Ready to build. Please paste your custom PlatformIO environment config.",
-            embed=embed,
-        )
+
+        await ctx.send(content="OK. Ready to build. Please paste your custom PlatformIO environment config.", embed=embed)
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, exception):
@@ -126,19 +131,28 @@ class WbldCog(commands.Cog, name="Builder"):
                 commands.errors.MissingRequiredArgument,
                 commands.errors.MaxConcurrencyReached,
                 commands.errors.CommandInvokeError,
+                FileNotFoundError,
             ),
         ):
             await ctx.send(exception)
+
+        logger.warning(exception)
         await logger.complete()
-        raise exception
 
     @commands.Cog.listener()
     async def on_command(self, ctx):
         logger.debug(f"Command {ctx.command.qualified_name} called by {str(ctx.author)}")
         await logger.complete()
 
-    @commands.group(description="Firmware building commands.")
-    async def build(self, ctx):
+    @commands.Cog.listener()
+    async def on_ready(self):
+        my_guild = self.bot.get_guild(206915180062441475)
+        await self.bot.tree.sync(guild=my_guild)
+        logger.debug("WbldCog ready.")
+        await logger.complete()
+
+    @commands.hybrid_group(description="Firmware building commands.")
+    async def build(self, ctx: commands.Context):
         """
         See help for builtin firmware:
 
@@ -155,9 +169,9 @@ class WbldCog(commands.Cog, name="Builder"):
 
     @commands.max_concurrency(1, per=commands.BucketType.user)
     @build.command()
-    async def builtin(self, ctx, env, version=None):
+    async def builtin(self, ctx: commands.Context, env: str, version: str = None):
         """
-        Builds and returns a firmware file for an environment which already exists in the WLED PlatformIO configuration.
+        Builds and returns a firmware file for an environment which already exists in the WLED PlatformIO.
 
         Example:
 
@@ -167,10 +181,11 @@ class WbldCog(commands.Cog, name="Builder"):
             version = self.default_branch
 
         await self._build_firmware(ctx, version, env, Builder)
+        # await ctx.send("This command is currently disabled.")
 
     @commands.max_concurrency(1, per=commands.BucketType.user)
     @build.command()
-    async def custom(self, ctx, version=None):
+    async def custom(self, ctx: commands.Context, version: str = None):
         """
         Builds and returns firmware for a custom configuration snippet that you provide.
 
@@ -199,24 +214,20 @@ class WbldCog(commands.Cog, name="Builder"):
 
             return inner_check
 
+        await ctx.send(f"Ready to build `{version}`. Paste your custom PlatformIO environment config.")
         try:
-            clone = Clone(version)
-            commit = clone.clone_version()
-        except Exception as error:
-            raise error
+            msg = await self.bot.wait_for("message", check=check_author(ctx.author, ctx.channel), timeout=30)
+        except TimeoutError:
+            await ctx.send("Didn't receive configuraton within 30 seconds. Try again!")
         else:
-            await ctx.send(
-                f"Ready to build `{version}` (`{commit.hexsha}`). Paste your custom PlatformIO environment config."
-            )
-            try:
-                msg = await self.bot.wait_for("message", check=check_author(ctx.author, ctx.channel), timeout=30)
-            except TimeoutError:
-                await ctx.send("Didn't receive configuraton within 30 seconds. Try again!")
-            else:
-                await self._build_firmware(ctx, version, msg.content, BuilderCustom, clone=clone)
+            await self._build_firmware(ctx, version, msg.content, BuilderCustom)
+
+    @context_menu(name="Build")
+    async def react(interaction: Interaction, message: Message):
+        await interaction.response.send_message("Very cool message!", ephemeral=True)
 
     @build.command()
-    async def log(self, ctx, build_id):
+    async def log(self, ctx: commands.Context, build_id: str):
         """
         Returns the log file containing stdout and stderr of the PlatformIO build.
         """
@@ -231,3 +242,19 @@ class WbldCog(commands.Cog, name="Builder"):
         else:
             file_send = File(build.file_log, filename=f"wled_build_{build_id}.log")
             await ctx.send(file=file_send, content=f"Log file for build: `{build_id}`")
+
+    @commands.command(name="wbldsync")
+    @commands.is_owner()
+    async def sync(self, ctx: commands.Context):
+        my_guild = self.bot.get_guild(206915180062441475)
+
+        self.bot.tree.copy_global_to(guild=my_guild)
+        sync = await self.bot.tree.sync(guild=my_guild)
+        logger.info("Synced application commands to guild: {}", my_guild)
+
+        commands: List[Command] = self.bot.tree.get_commands(guild=my_guild)
+
+        for command in commands:
+            await ctx.send(f"Command: {sync}")
+
+        await logger.complete()

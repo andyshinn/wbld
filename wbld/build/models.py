@@ -8,7 +8,6 @@ from pydantic import BaseModel, constr, DirectoryPath, validator, Field
 
 from wbld.build.enums import Kind, State
 from wbld.build.storage import Storage
-from wbld.log import logger
 
 
 class Author:
@@ -19,7 +18,7 @@ class Author:
     @classmethod
     def validate(cls, author: Union[Member, User]):
         types = Union[Member, User]
-        fields = ["id", "name", "avatar_url", "discriminator"]
+        fields = ["id", "name", "avatar", "discriminator"]
 
         if isinstance(author, types.__args__):
             return dict([(name, str(getattr(author, name))) for name in fields])
@@ -30,6 +29,9 @@ class Author:
         raise TypeError("Invalid value")
 
 
+sha1_regex = constr(regex=r"^[0-9a-f]{40}$")
+
+
 class BuildModel(BaseModel):
     author: Author = None
     build_file: ClassVar[str] = "build.json"
@@ -37,7 +39,7 @@ class BuildModel(BaseModel):
     env: str
     kind: Kind
     path: DirectoryPath = Field(default_factory=Storage.generate_build_uuid_path)
-    sha1: constr(regex=r"^[0-9a-f]{40}$")
+    sha1: sha1_regex
     snippet: str = None
     state: State = State.PENDING
     version: str

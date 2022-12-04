@@ -1,5 +1,5 @@
-from aiohttp import ClientSession, ClientError
-from discord.ext import tasks, commands
+from aiohttp import ClientError, ClientSession
+from discord.ext import commands, tasks
 
 from wbld.log import logger
 

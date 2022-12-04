@@ -1,13 +1,12 @@
 {% extends 'base.html.jinja2' %}
 
 {% block header %}
-  <nav class="text-xl">
     <ol class="list-reset flex text-grey-dark">
       <li><a href="/" class="text-blue font-bold">Builds</a></li>
       <li><span class="mx-2">/</span></li>
       <li><span class="font-bold">{{ build.build_id }}</span></li>
     </ol>
-  </nav>{% endblock %}
+{% endblock %}
 
 {% block content %}
   <svg class="hidden" xmlns="http://www.w3.org/2000/svg">
@@ -38,8 +37,8 @@
           </div>
           <div class="flex-initial mr-8">
             <a class="inline whitespace-nowrap font-bold truncate hover:text-blue-700"
-               href="/build/{{ build.build_id }}">{{ build.build_id }}</a>
-            <p class="inline text-xs rounded-full px-2 bg-{{ 'blue' if build.kind|e == 'Kind.BUILTIN' else 'purple' }}-500 text-white rounded leading-none opacity-50">{{ 'Builtin' if build.kind|e == 'Kind.BUILTIN' else 'Custom' }}</p>
+               href="/build/{{ build.build_id }}"><p class="text-sm font-medium text-indigo-600 truncate">{{ build.build_id }}</p></a>
+            <p class="{{ 'pill-builtin' if build.kind|e == 'Kind.BUILTIN' else 'pill-custom' }}">{{ 'Builtin' if build.kind|e == 'Kind.BUILTIN' else 'Custom' }}</p>
             <p class="text-sm text-gray-400 italic">{{ build.env }}</p>
           </div>
           <div class="invisible md:visible flex-initial">

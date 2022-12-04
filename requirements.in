@@ -12,5 +12,6 @@ pylint
 pytest
 python-dotenv
 sentry-sdk
+sh
 shortuuid
 watchdog[watchmedo]

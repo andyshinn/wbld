@@ -13,3 +13,4 @@ terraform.*
 venv/
 .venv/
 .idea/
+node_modules/

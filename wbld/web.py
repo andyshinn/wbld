@@ -1,8 +1,8 @@
 import json
 
-from aiohttp import web, WSMsgType, WSMessage
-from jinja2 import FileSystemLoader
 import aiohttp_jinja2
+from aiohttp import WSMessage, WSMsgType, web
+from jinja2 import FileSystemLoader
 
 from wbld.build import Manager, Storage
 from wbld.log import logger
@@ -51,7 +51,14 @@ async def websocket_handler(request):
 @aiohttp_jinja2.template("builds.html.jinja2")
 async def builds(request):  # pylint: disable=unused-argument
     build_list = Manager.list_builds()  # pylint: disable=redefined-outer-name
+    logger.debug(build_list)
+    await logger.complete()
     return {"builds": build_list}
+
+
+@routes.get("/favicon.ico")
+async def favicon(request):
+    return web.FileResponse("wbld/static/images/favicon.ico")
 
 
 @routes.get("/build/{uuid}")
