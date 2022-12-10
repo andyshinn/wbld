@@ -69,8 +69,8 @@ class Builder:
     #     with self.build_path.joinpath("build.json").open("w") as build_info_file:
     #         build_info_file.write(build.json())
 
-    def platform_install(self, platform, skip_dependencies=True, silent=True):
-        pkg = self.package_manager.install(spec=platform, skip_dependencies=skip_dependencies, silent=silent)
+    def platform_install(self, platform, skip_dependencies=True):
+        pkg = self.package_manager.install(spec=platform, skip_dependencies=skip_dependencies)
         return pkg
 
     @property
@@ -130,6 +130,7 @@ class Builder:
         os.chdir(self.path)
         self.project_config = ProjectConfig(self.path.joinpath("platformio.ini"))
         self.package_manager = PlatformPackageManager()
+        self.package_manager.set_log_level("ERROR")
         if not self.check_env():
             raise BuilderError(f"Environment doesn't exist: {self.build.env}")
 
