@@ -1,10 +1,7 @@
 from contextlib import redirect_stderr, redirect_stdout
-from datetime import datetime
 import os
 import shutil
 from timeit import default_timer as timer
-from pathlib import Path
-from tempfile import mkdtemp, gettempdir
 
 from platformio.package.manager.platform import PlatformPackageManager
 from platformio.platform.exception import UnknownPlatform
