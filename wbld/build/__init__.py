@@ -69,7 +69,7 @@ class Builder:
     #     with self.build_path.joinpath("build.json").open("w") as build_info_file:
     #         build_info_file.write(build.json())
 
-    def platform_install(self, platform, skip_dependencies=True):
+    def platform_install(self, platform, skip_dependencies=False):
         pkg = self.package_manager.install(spec=platform, skip_dependencies=skip_dependencies)
         return pkg
 
@@ -99,7 +99,7 @@ class Builder:
         try:
             factory = PlatformFactory.new(platform)
         except UnknownPlatform:
-            self.platform_install(platform=platform, skip_dependencies=True)
+            self.platform_install(platform=platform, skip_dependencies=False)
             factory = PlatformFactory.new(platform)
 
         log_combined = self.build.file_log.open("w")
