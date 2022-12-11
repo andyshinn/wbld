@@ -3,8 +3,10 @@ tricks:
       command: ["python", "-m", "wbld.bot"]
       patterns:
         - "*.py"
-        - "*.html"
   - watchdog.tricks.AutoRestartTrick:
       command: ["python", "-m", "wbld.web"]
       patterns:
         - "*.py"
+        - "*.html"
+        - "*.jinja2"
+        - "*.css"
