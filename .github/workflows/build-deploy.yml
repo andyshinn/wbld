@@ -6,8 +6,8 @@ jobs:
   testing:
     runs-on: [self-hosted, miniboy]
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3.1.3
         with:
           python-version: 3.9
       - run: pip install -r requirements.txt
@@ -17,24 +17,24 @@ jobs:
     runs-on: [self-hosted, miniboy]
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v2.5.0
       - name: Cache Docker layers
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-buildx-
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v1
+        uses: docker/login-action@v2.1.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GHCR_TOKEN }}
       - name: Build and push
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v4.0.0
         with:
           context: .
           file: ./Dockerfile
@@ -56,8 +56,8 @@ jobs:
       TF_VAR_commit: ${{ github.sha }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
-      - uses: hashicorp/setup-terraform@v1
+        uses: actions/checkout@v3
+      - uses: hashicorp/setup-terraform@v2.0.3
         with:
           terraform_version: 0.14.2
           terraform_wrapper: false
