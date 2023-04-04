@@ -14,7 +14,7 @@ class CustomConfigException(Exception):
 class CustomConfig(ConfigParser):
     def __init__(self, snippet):
         super(CustomConfig, self).__init__()
-        self.snippet = snippet
+        self.snippet: str = snippet
         self.read_string(self.snippet)
 
         if len(self) > 1:
@@ -33,11 +33,11 @@ class CustomConfig(ConfigParser):
         return text
 
     @property
-    def section(self):
+    def section(self) -> str:
         return self.sections()[0]
 
     @property
-    def env(self):
+    def env(self) -> str:
         return CustomConfig.remove_prefix(self.section, "env:")
 
     @property

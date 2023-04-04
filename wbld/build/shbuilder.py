@@ -1,9 +1,9 @@
+from abc import ABC, abstractmethod
 import shutil
 from timeit import default_timer as timer
 from pathlib import Path
 import json
 
-from sh import pio
 
 from wbld.log import logger
 from wbld.build.config import CustomConfig
@@ -11,16 +11,17 @@ from wbld.build.models import BuildModel
 from wbld.build.enums import Kind, State
 from wbld.build.storage import Storage
 from wbld.repository import Clone
+from wbld.pio import PioCommand
 
 
 def is_platformio_project(path: Path) -> bool:
     return path.joinpath("platformio.ini").exists()
 
 
-class Pio:
-    @staticmethod
-    def system_info() -> dict:
-        return pio.system.info(json_output=True)
+# class Pio:
+#     @staticmethod
+#     def system_info() -> dict:
+#         return pio.system.info(json_output=True)
 
 
 class Build:
@@ -50,9 +51,8 @@ class BuilderError(Exception):
     pass
 
 
-class Builder:
+class Builder(ABC):
     def __init__(self, version: str, env: str):
-        self.kind = Kind.BUILTIN
         self.version = version
         self.env = env
         self._clone = None
@@ -71,15 +71,20 @@ class Builder:
 
     @property
     def firmware_filename(self):
-        return f"{self.path}/.pio/build/{self.build.env}/firmware.bin"
+        return f"{self._clone.path}/.pio/build/{self.build.env}/firmware.bin"
+
+    @property
+    @abstractmethod
+    def kind(self):
+        return NotImplementedError
 
     # pylint: disable=too-many-arguments
     def run(self, variables=None, targets=None, silent=False, verbose=False, jobs=2):
         timer_start = timer()
         log_combined = self.build.file_log.open("w")
 
-        global pio
-        pio = pio.bake(_out=log_combined, _err_to_out=True)
+        # global pio
+        pio = PioCommand(out=log_combined)
 
         self.build.state = State.BUILDING
         run = pio.run(environment=self.build.env, project_dir=self.path, verbose=verbose, jobs=jobs)
@@ -96,6 +101,7 @@ class Builder:
         return self.build
 
     def get_list_of_envs(self):
+        pio = PioCommand()
         project = pio.project.config(project_dir=self.path, json_output=True)
         return [env[0] for env in json.loads(project.stdout) if env[0].startswith("env:")]
 
@@ -131,14 +137,31 @@ class Builder:
         logger.debug(f"Files gathered in {self.build.path}: {files}")
 
 
+class BuilderBuiltin(Builder):
+    def __init__(self, version: str, env: str):
+        logger.debug(f"Built-in build for version {version} using env: {env}")
+        super(BuilderBuiltin, self).__init__(version, env)
+
+    @property
+    def kind(self):
+        return Kind.BUILTIN
+
+
 class BuilderCustom(Builder):
-    def __init__(self, clone: Clone, snippet):
-        logger.debug(f"Custom build in {clone.path} using snippet:\n{snippet}")
+    def __init__(self, version: str, clone: Clone, snippet):
         custom_config = CustomConfig(snippet)
+        env = custom_config.env
+
+        logger.debug(f"Custom build in {clone.path} using env: {env}")
+        logger.trace(f"Custom config: {custom_config.snippet}")
+
         with open(f"{clone.path}/platformio_override.ini", "w") as file:
             logger.debug(f"Writing out custom config to: {file.name}")
             custom_config.write(file)
+
         super(BuilderCustom, self).__init__(clone, custom_config.env)
-        self.kind = Kind.CUSTOM
-        self.build.kind = Kind.CUSTOM
         self.build.snippet = snippet
+
+    @property
+    def kind(self):
+        return Kind.CUSTOM

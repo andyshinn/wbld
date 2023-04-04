@@ -1,9 +1,11 @@
+import asyncio
 import os
 
 from discord import Intents
 from discord.ext import commands
 
 from wbld.cogs.health import Health
+from wbld.cogs.pio import Pio
 from wbld.cogs.wbld import WbldCog
 from wbld.log import logger
 
@@ -31,6 +33,8 @@ class Bot(commands.Bot):
         if PING_URL:
             await register_cog(Health, PING_URL)
 
+        await register_cog(Pio)
+
         await register_cog(WbldCog, BASE_URL, DEFAULT_BRANCH)
         await logger.complete()
 
@@ -44,8 +48,19 @@ bot = Bot(
 )
 
 
-if __name__ == "__main__":
+async def main():
     if TOKEN:
-        bot.run(TOKEN)
+        if PING_URL:
+            await bot.add_cog(Health(bot, PING_URL))
+        await bot.add_cog(WbldCog(bot, BASE_URL, DEFAULT_BRANCH))
+        await bot.start(TOKEN)
     else:
         logger.error("Please set your DISCORD_TOKEN.")
+
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Shutting down...")
+        asyncio.run(bot.close())

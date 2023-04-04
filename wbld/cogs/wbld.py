@@ -2,15 +2,14 @@ from asyncio.exceptions import TimeoutError
 from configparser import MissingSectionHeaderError, ParsingError
 from typing import List, Union
 
-from discord import Colour, Embed, File, Interaction, Message
-from discord.app_commands import Command, context_menu
+from discord import Colour, Embed, File
 from discord.ext import commands
+from discord.app_commands import Command
 
-from wbld.build import BuilderCustom
 from wbld.build.config import CustomConfigException
 from wbld.build.enums import State
 from wbld.build.models import BuildModel
-from wbld.build.shbuilder import Builder
+from wbld.build.shbuilder import BuilderBuiltin, BuilderCustom
 from wbld.log import logger
 from wbld.repository import Reference, ReferenceException
 
@@ -53,7 +52,7 @@ class WbldCog(commands.Cog, name="Builder"):
         ctx: commands.Context,
         version: str,
         env_or_snippet: str,
-        builder: Union[Builder, BuilderCustom],
+        builder: Union[BuilderBuiltin, BuilderCustom],
     ):
         await ctx.defer(ephemeral=False)
 
@@ -180,12 +179,12 @@ class WbldCog(commands.Cog, name="Builder"):
         if not version:
             version = self.default_branch
 
-        await self._build_firmware(ctx, version, env, Builder)
+        await self._build_firmware(ctx, version, env, BuilderBuiltin)
         # await ctx.send("This command is currently disabled.")
 
     @commands.max_concurrency(1, per=commands.BucketType.user)
     @build.command()
-    async def custom(self, ctx: commands.Context, version: str = None):
+    async def custom(self, ctx: commands.Context, version: str = None, repository: str = None):
         """
         Builds and returns firmware for a custom configuration snippet that you provide.
 
@@ -221,10 +220,6 @@ class WbldCog(commands.Cog, name="Builder"):
             await ctx.send("Didn't receive configuraton within 30 seconds. Try again!")
         else:
             await self._build_firmware(ctx, version, msg.content, BuilderCustom)
-
-    @context_menu(name="Build")
-    async def react(interaction: Interaction, message: Message):
-        await interaction.response.send_message("Very cool message!", ephemeral=True)
 
     @build.command()
     async def log(self, ctx: commands.Context, build_id: str):
