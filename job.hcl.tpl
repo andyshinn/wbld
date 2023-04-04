@@ -52,8 +52,8 @@ job "wbld" {
       }
 
       resources {
-        cpu    = 1000
-        memory = 1024
+        cpu    = 2000
+        memory = 2048
       }
 
       env {

@@ -2,12 +2,12 @@ terraform {
   required_providers {
     docker = {
       source  = "kreuzwerker/docker"
-      version = "2.8.0"
+      version = "3.0.2"
     }
 
     nomad = {
       source  = "hashicorp/nomad"
-      version = "1.4.11"
+      version = "1.4.19"
     }
   }
 }
@@ -45,7 +45,7 @@ provider "nomad" {
 }
 
 provider "docker" {
-  host = "tcp://127.0.0.1:2375"
+  host = "unix:///var/run/docker.sock"
 
   registry_auth {
     address  = "ghcr.io"
@@ -55,11 +55,13 @@ provider "docker" {
 }
 
 resource "docker_volume" "wbld_buildcache" {
-  name = "wbld_buildcache"
+  name   = "wbld_buildcache"
+  driver = "local"
 }
 
 resource "docker_volume" "wbld_platformio" {
-  name = "wbld_platformio"
+  name   = "wbld_platformio"
+  driver = "local"
 }
 
 resource "nomad_job" "wbld" {
