@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   testing:
-    runs-on: [self-hosted, Linux]
+    runs-on: [self-hosted, miniboy]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -14,7 +14,7 @@ jobs:
       - run: pytest
       - run: black --line-length 120 --check --diff -l 120 **/*.py
   image:
-    runs-on: [self-hosted, Linux]
+    runs-on: [self-hosted, miniboy]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -45,7 +45,7 @@ jobs:
   deploy:
     if: github.ref == 'refs/heads/master'
     needs: [image, testing]
-    runs-on: [self-hosted, Linux]
+    runs-on: [self-hosted, miniboy]
     env:
       TF_IN_AUTOMATION: 1
       TF_INPUT: 0
