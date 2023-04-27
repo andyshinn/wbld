@@ -1,14 +1,15 @@
 from __future__ import annotations
+
 import os
 
+import pytest
 from platformio.project.config import ProjectConfig
 from pydantic.error_wrappers import ValidationError
-import pytest
 
-from wbld.build.config import CustomConfig
-from wbld.build.models import BuildModel
-from wbld.build.enums import Kind, State
 from wbld.build import Build, Builder, BuilderCustom
+from wbld.build.config import CustomConfig
+from wbld.build.enums import Kind, State
+from wbld.build.models import BuildModel
 from wbld.repository import Clone
 
 

@@ -1,9 +1,9 @@
-from tempfile import TemporaryDirectory
 import os
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
-from github import Github, GithubException
 from git import Repo
+from github import Github, GithubException
 
 
 class ReferenceException(Exception):
@@ -52,27 +52,49 @@ class Reference:
 
 
 class Clone:
-    def __init__(self, version, url="https://github.com/Aircoookie/WLED.git"):
+    def __init__(self, url: str = "https://github.com/Aircoookie/WLED.git", cleanup: bool = True):
         self.tempdir = TemporaryDirectory()
-        self.path = Path(self.tempdir.name)
+        self._path = Path(self.tempdir.name)
         self.url = url
-        self.version = version
         self.repo = Repo.init(str(self.path))
-        self.sha1 = None
+        self._cleanup = cleanup
+        self._version = None
 
     def __enter__(self):
-        return self.path
+        return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.cleanup()
 
-    def clone_version(self):
+    @property
+    def sha1(self):
+        try:
+            return self.repo.commit()
+        except ValueError:
+            return None
+
+    @property
+    def version(self):
+        if not self._version:
+            raise Exception("No version set")
+
+        return self._version
+
+    @property
+    def path(self):
+        if self._path.exists():
+            return self._path
+        else:
+            raise FileNotFoundError("Path does not exist. Did you clone the repository?")
+
+    def clone_version(self, version: str = "main"):
+        self._version = version
         origin = self.repo.create_remote("origin", self.url)
         origin.fetch()
-        self.repo.git.checkout(self.version)
+        self.repo.git.checkout(version)
 
-        self.sha1 = self.repo.commit()
         return self.sha1
 
     def cleanup(self):
-        self.tempdir.cleanup()
+        if self._cleanup:
+            self.tempdir.cleanup()

@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    .pill-custom {
+      @apply inline text-xs px-2 bg-purple-500 text-white rounded leading-none opacity-50;
+    }
+
+    .pill-builtin {
+      @apply inline text-xs px-2 bg-blue-500 text-white rounded;
+    }
+  }
