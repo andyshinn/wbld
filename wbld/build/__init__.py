@@ -1,5 +1,5 @@
-from cmath import log
 from contextlib import redirect_stderr, redirect_stdout
+from itertools import islice
 import os
 import shutil
 from timeit import default_timer as timer
@@ -24,21 +24,57 @@ class Build:
 
 
 class Manager:
-    @staticmethod
-    def list_builds(sort=True, reverse=True):
+    per_page = 10
+
+    @classmethod
+    def list_builds(cls, sort=True, reverse=True, page=1, per_page=None):
         def sorting(key):
             if sort:
                 return key.stat().st_ctime
             return None
 
-        for path in sorted(Storage.base_path.iterdir(), key=sorting, reverse=reverse):
-            if path.joinpath(BuildModel.build_file).exists():
-                logger.debug(path)
-                yield BuildModel.parse_build_path(path)
+        if per_page is None:
+            per_page = cls.per_page
+
+        start_index = (page - 1) * per_page
+        end_index = start_index + per_page
+
+        builds = (
+            BuildModel.parse_build_path(path)
+            for path in filter(
+                lambda p: p.joinpath(BuildModel.build_file).exists(),
+                sorted(
+                    Storage.base_path.iterdir(),
+                    key=sorting,
+                    reverse=reverse
+                )
+            )
+        )
+
+        builds_slice = islice(builds, start_index, end_index)
+
+        for build in builds_slice:
+            yield build
 
     @staticmethod
     def get_build(build_id) -> BuildModel:
         return BuildModel.parse_build_id(build_id)
+
+    @staticmethod
+    def last_page(per_page=10):
+        return len(list(Storage.base_path.iterdir())) // per_page
+
+    @staticmethod
+    def total_build_count() -> int:
+        return len(list(Storage.base_path.iterdir()))
+
+    @staticmethod
+    def get_all_pages(per_page=10):
+        return list(range(1, Manager.last_page(per_page=per_page) + 1))
+
+    @staticmethod
+    def get_per_page():
+        return Manager.per_page
 
 
 class BuilderError(Exception):

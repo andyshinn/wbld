@@ -15,7 +15,6 @@ aiohttp_jinja2.setup(app, loader=FileSystemLoader("wbld/templates"))
 
 @routes.get("/ws")
 async def websocket_handler(request):
-
     ws = web.WebSocketResponse()
     await ws.prepare(request)
 
@@ -47,13 +46,41 @@ async def websocket_handler(request):
     return ws
 
 
+# @aiohttp_jinja2.template("builds.html")
+# async def builds(request):  # pylint: disable=unused-argument
+#     build_list = Manager.list_builds()  # pylint: disable=redefined-outer-name
+#     logger.debug(build_list)
+#     await logger.complete()
+#     return {"builds": build_list}
+
+
+@routes.get("/page/{page}")
 @routes.get("/")
-@aiohttp_jinja2.template("builds.html.jinja2")
-async def builds(request):  # pylint: disable=unused-argument
-    build_list = Manager.list_builds()  # pylint: disable=redefined-outer-name
+@routes.get("/builds")
+@aiohttp_jinja2.template("builds.html")
+async def page(request):  # pylint: disable=unused-argument
+    try:
+        page = int(request.match_info.get("page", 1))
+        assert page > 0
+    except ValueError:
+        raise web.HTTPError(reason="Invalid page number")
+    except AssertionError:
+        raise web.HTTPError(reason="Page number needs to be greater than 0")
+
+    build_list = Manager.list_builds(page=page)  # pylint: disable=redefined-outer-name
     logger.debug(build_list)
     await logger.complete()
-    return {"builds": build_list}
+
+    return {
+        "builds": build_list,
+        "pages": Manager.get_all_pages(),
+        "pagination_current": page,
+        "pagination_per_page": Manager.per_page,
+        "pagination_next": page + 1,
+        "pagination_prev": page - 1,
+        "pagination_last_page": Manager.last_page(),
+        "pagination_build_count_total": Manager.total_build_count(),
+    }
 
 
 @routes.get("/favicon.ico")
@@ -62,7 +89,7 @@ async def favicon(request):
 
 
 @routes.get("/build/{uuid}")
-@aiohttp_jinja2.template("build.html.jinja2")
+@aiohttp_jinja2.template("build.html")
 async def build(request):  # pylint: disable=unused-argument
     build_info = Manager.get_build(request.match_info["uuid"])
     return {"build": build_info}

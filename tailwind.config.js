@@ -1,6 +1,6 @@
 module.exports = {
   content: [
-    "./wbld/templates/*.html.jinja2"
+    "./wbld/templates/*.html"
   ],
   theme: {
     extend: {},

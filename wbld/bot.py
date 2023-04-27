@@ -2,6 +2,7 @@ import asyncio
 import os
 
 from discord import Intents
+from discord.errors import PrivilegedIntentsRequired
 from discord.ext import commands
 
 from wbld.cogs.health import Health
@@ -14,14 +15,18 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 PING_URL = os.getenv("PING_URL")
 PREFIXES = [os.getenv("DISCORD_PREFIX", "./")]
 DEFAULT_BRANCH = os.getenv("DEFAULT_BRANCH", "main")
+OWNER_ID = os.getenv("OWNER_ID", 206914075391688704)
 
 
 class Bot(commands.Bot):
     def __init__(self, **kwargs):
         intents = Intents.default()
         intents.message_content = True
-        intents.members = True
-        super(Bot, self).__init__(**kwargs, intents=intents)
+        intents.messages = True
+        intents.reactions = True
+        intents.dm_messages = True
+        intents.members = False  # Do we need this?
+        super(Bot, self).__init__(**kwargs, intents=intents, help_command=commands.DefaultHelpCommand())
 
     async def on_ready(self):
         logger.info("{} has connected to Discord!", self.user)
@@ -44,18 +49,25 @@ bot = Bot(
     case_insensitive=True,
     description="A WLED firmware Discord bot.",
     shard_id=0,
-    owner_id=206914075391688704,
+    owner_id=OWNER_ID,
 )
 
 
 async def main():
-    if TOKEN:
-        if PING_URL:
-            await bot.add_cog(Health(bot, PING_URL))
-        await bot.add_cog(WbldCog(bot, BASE_URL, DEFAULT_BRANCH))
-        await bot.start(TOKEN)
-    else:
-        logger.error("Please set your DISCORD_TOKEN.")
+    try:
+        if TOKEN:
+            if PING_URL:
+                await bot.add_cog(Health(bot, PING_URL))
+            await bot.add_cog(WbldCog(bot, BASE_URL, DEFAULT_BRANCH))
+            await bot.start(TOKEN)
+        else:
+            logger.error("Please set your DISCORD_TOKEN.")
+    except PrivilegedIntentsRequired as e:
+        logger.error("Please enable the privileged intents. Error: {}", e)
+    except Exception as e:
+        logger.exception("Error: {}", e)
+    finally:
+        await bot.close()
 
 
 if __name__ == "__main__":

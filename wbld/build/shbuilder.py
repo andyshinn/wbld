@@ -18,12 +18,6 @@ def is_platformio_project(path: Path) -> bool:
     return path.joinpath("platformio.ini").exists()
 
 
-# class Pio:
-#     @staticmethod
-#     def system_info() -> dict:
-#         return pio.system.info(json_output=True)
-
-
 class Build:
     def __new__(cls, build_id: str) -> BuildModel:
         return BuildModel.parse_build_id(build_id)
@@ -83,10 +77,10 @@ class Builder(ABC):
         timer_start = timer()
         log_combined = self.build.file_log.open("w")
 
-        # global pio
-        pio = PioCommand(out=log_combined)
+        pio = PioCommand(return_command=True, out=log_combined)
 
         self.build.state = State.BUILDING
+
         run = pio.run(environment=self.build.env, project_dir=self.path, verbose=verbose, jobs=jobs)
 
         if run.exit_code == 0:
@@ -101,9 +95,9 @@ class Builder(ABC):
         return self.build
 
     def get_list_of_envs(self):
-        pio = PioCommand()
+        pio = PioCommand(err_to_out=False)
         project = pio.project.config(project_dir=self.path, json_output=True)
-        return [env[0] for env in json.loads(project.stdout) if env[0].startswith("env:")]
+        return [env[0] for env in json.loads(project) if env[0].startswith("env:")]
 
     def check_env(self, env: str) -> bool:
         if f"env:{env}" in self.get_list_of_envs():

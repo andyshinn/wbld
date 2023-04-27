@@ -3,8 +3,8 @@ from configparser import MissingSectionHeaderError, ParsingError
 from typing import List, Union
 
 from discord import Colour, Embed, File
-from discord.ext import commands
 from discord.app_commands import Command
+from discord.ext import commands
 
 from wbld.build.config import CustomConfigException
 from wbld.build.enums import State
@@ -238,18 +238,18 @@ class WbldCog(commands.Cog, name="Builder"):
             file_send = File(build.file_log, filename=f"wled_build_{build_id}.log")
             await ctx.send(file=file_send, content=f"Log file for build: `{build_id}`")
 
-    @commands.command(name="wbldsync")
+    @commands.command(name="wbldsync", hidden=True)
     @commands.is_owner()
-    async def sync(self, ctx: commands.Context):
-        my_guild = self.bot.get_guild(206915180062441475)
+    async def sync(self, ctx: commands.Context, guild_id: int = 206915180062441475):
+        my_guild = self.bot.get_guild(guild_id)
 
         self.bot.tree.copy_global_to(guild=my_guild)
-        sync = await self.bot.tree.sync(guild=my_guild)
+        await self.bot.tree.sync(guild=my_guild)
         logger.info("Synced application commands to guild: {}", my_guild)
 
         commands: List[Command] = self.bot.tree.get_commands(guild=my_guild)
 
         for command in commands:
-            await ctx.send(f"Command: {sync}")
+            await ctx.send(f"Synced command: {command.name}")
 
         await logger.complete()
